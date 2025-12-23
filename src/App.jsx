@@ -1,5 +1,29 @@
 import { useEffect, useState } from "react"
 
+function groupChunks(rows) {
+  const map = {}
+
+  rows.forEach(r => {
+    if (!map[r.chunk_id]) {
+      map[r.chunk_id] = {
+        chunk_id: r.chunk_id,
+        chunk: r.chunk,
+        frequency: r.frequency,
+        items: []
+      }
+    }
+
+    map[r.chunk_id].items.push({
+      keyword: r.keyword,
+      syntagmid: r.syntagmid,
+      syntagm_name: r.syntagm_name,
+      target_part_of_speech: r.target_part_of_speech
+    })
+  })
+
+  return Object.values(map)
+}
+
 export default function App() {
   const [chunks, setChunks] = useState([])
   const [index, setIndex] = useState(0)
@@ -12,17 +36,16 @@ export default function App() {
       user_id: 1,
       limit: 50
     })
-
     fetch(`http://localhost:8000/chunks?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
-        setChunks(data)
+        setChunks(groupChunks(data))
         setIndex(0)
       })
   }, [])
 
   if (!chunks.length) {
-    return <div className="text-center mt-20 text-slate-500">Loading...</div>
+    return <div className="mt-20 text-center text-slate-500">Loading...</div>
   }
 
   const current = chunks[index]
@@ -30,40 +53,31 @@ export default function App() {
 
   const submitQuality = async (q) => {
     setLoading(true)
-
-    try {
-      await fetch(`http://localhost:8000/chunks/${current.chunk_id}/review`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          quality: q
-        })
+    await fetch(`http://localhost:8000/chunks/${current.chunk_id}/review`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        quality: q
       })
-
-      // sang từ tiếp theo
-      setIndex(i => i + 1)
-    } catch (err) {
-      console.error(err)
-      alert("Submit failed")
-    } finally {
-      setLoading(false)
-    }
+    })
+    setIndex(i => i + 1)
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-lg p-6 space-y-6">
+    <div className="min-h-screen bg-slate-100 flex justify-center items-center p-4">
+      <div className="bg-white max-w-3xl w-full rounded-2xl shadow-lg p-6 space-y-6">
 
-        {/* Phrase */}
+        {/* Chunk */}
         <div className="text-center">
           <h1 className="text-3xl font-bold text-slate-800">
             {current.chunk}
           </h1>
-          <p className="text-slate-500 mt-2">
+          <span className="inline-block mt-2 text-xs px-3 py-1 rounded-full bg-slate-200 text-slate-600">
             Frequency: {current.frequency}
-          </p>
+          </span>
         </div>
 
         {/* YouGlish */}
@@ -96,6 +110,48 @@ export default function App() {
           </div>
         </div>
 
+        {/* Keywords & Grammar */}
+        <div>
+          <h3 className="font-semibold text-slate-700 mb-2">
+            Keywords & Grammar
+          </h3>
+
+          <div className="grid gap-2">
+            {current.items.map((it, i) => (
+              <div
+                key={i}
+                className="flex flex-wrap gap-2 items-center bg-slate-50 border rounded-lg px-3 py-2"
+              >
+                <span className="font-medium text-slate-800">
+                  {it.keyword}
+                </span>
+
+                <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">
+                  {it.syntagm_name} ({it.syntagmid})
+                </span>
+
+                <span className="text-xs px-2 py-0.5 rounded bg-indigo-100 text-indigo-700">
+                  {it.target_part_of_speech}
+                </span>
+
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Quality */}
+        {/* <div className="grid grid-cols-3 gap-3 pt-2">
+          {[0, 1, 2, 3, 4, 5].map(q => (
+            <button
+              key={q}
+              disabled={loading}
+              onClick={() => submitQuality(q)}
+              className="py-3 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-50"
+            >
+              Quality {q}
+            </button>
+          ))}
+        </div> */}
         {/* Quality buttons */}
         <div className="space-y-2">
           <p className="text-center text-slate-600 text-sm">
@@ -130,11 +186,9 @@ export default function App() {
           </div>
         </div>
 
-        {/* Progress */}
-        <div className="text-center text-slate-400 text-sm">
+        <div className="text-center text-sm text-slate-400">
           {index + 1} / {chunks.length}
         </div>
-
       </div>
     </div>
   )
