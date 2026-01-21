@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 function groupChunks(rows) {
   const map = {}
@@ -36,7 +37,7 @@ export default function App() {
       user_id: 1,
       limit: 50
     })
-    fetch(`http://localhost:8000/chunks?${params.toString()}`)
+    fetch(`${API_BASE_URL}/chunks?${params.toString()}`)
       .then(res => res.json())
       .then(data => {
         setChunks(groupChunks(data))
@@ -53,7 +54,7 @@ export default function App() {
 
   const submitQuality = async (q) => {
     setLoading(true)
-    await fetch(`http://localhost:8000/chunks/${current.chunk_id}/review`, {
+    await fetch(`${API_BASE_URL}/chunks/${current.chunk_id}/review`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
